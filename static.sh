@@ -375,6 +375,28 @@ elif [ "$1" = "collection:manifest" ]; then
 elif [ "$1" = "sitemap" ]; then
   echo XXX5
 else
-  # ZZZ usage
-  echo usage
+  cat << END_USAGE
+error: verb "$1" not found
+
+usage: $0 [verb] [params]
+
+  verbs:
+  - object:create [dir]: ingest the specified directory as a new object
+  - object:adm_md [uuid] [json]: store json as the given object's _adm_md.json
+  - object:desc_md [uuid] [json]: store json as the given object's _desc_md.json
+  - object:tech_md [uuid] [json]: store json as the object's _tech_md.json
+  - object:order [uuid] [json]: store json as the given objects's _order.json
+  - object:struct [uuid] [json]: store json as the given object's _struct.json
+  - object:refresh_remote_md [uuid]: update the given object's remote metadata
+  - object:derivatives [uuid]: (re)generate derivatives for the given object
+  - object:manifest [uuid]: (re)generate the iiif manifest for the object
+  - object:validate [uuid]: verify that the object is valid
+  - admin_set:create [json]: ingest json as a new admin_set
+  - admin_set:update [uuid] [json]: store json as the given admin_set's metadata
+  - admin_set:manifest [uuid]: (re)generate the iiif manifest for the collection
+  - collection:create [json]: ingest json as a new collection
+  - collection:update [uuid] [json]: store json as the given collection's metadata
+  - collection:manifest [uuid]: (re)generate the iiif manifest for the collection
+  - sitemap: (re) generate sitemaps
+END_USAGE
 fi

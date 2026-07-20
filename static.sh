@@ -195,6 +195,57 @@ function update_tech_md
   echo ']}' >> $TMD
 }
 
+function validate_object
+{
+  UUID="$1"
+  echo "validating $UUID"
+  OBJ_DIR=$( obj_dir $UUID )
+  TMD="$OBJ_DIR/_tech_md.json"
+  ERR=0
+  for i in $OBJ_DIR/[0-9a-zA-Z]*.*; do
+    FN=$( basename $i )
+    echo "  $FN"
+    C1=$( stat -f %B $i )
+    CT=$( timestamp_to_iso8601 $C1 )
+    TMD_CT=$( jq -r ".files[] | select(.filename == \"$FN\").created" $TMD )
+    if [ "$CT" != "$TMD_CT" ]; then
+      echo "    created mismatch: $CT <> $TMD_CT"
+      ERR=$(( $ERR + 1 ))
+    fi
+
+    M1=$( stat -f %m $i )
+    MT=$( timestamp_to_iso8601 $M1 )
+    TMD_MT=$( jq -r ".files[] | select(.filename == \"$FN\").modified" $TMD )
+    if [ "$MT" != "$TMD_MT" ]; then
+      echo "    modified mismatch: $MT <> $TMD_MT"
+      ERR=$(( $ERR + 1 ))
+    fi
+
+    SZ=$( stat -f %z $i )
+    TMD_SZ=$( jq -r ".files[] | select(.filename == \"$FN\").size" $TMD )
+    if [ "$SZ" != "$TMD_SZ" ]; then
+      echo "    size mismatch: $SZ <> $TMD_SZ"
+      ERR=$(( $ERR + 1 ))
+    fi
+
+    MD5=$( md5 -q $i )
+    TMD_MD5=$( jq -r ".files[] | select(.filename == \"$FN\").md5" $TMD )
+    if [ "$MD5" != "$TMD_MD5" ]; then
+      echo "    md5 mismatch: $MD5 <> $TMD_MD5"
+      ERR=$(( $ERR + 1 ))
+    fi
+
+    SHA256=$( sha256 -q $i )
+    TMD_SHA256=$( jq -r ".files[] | select(.filename == \"$FN\").sha256" $TMD )
+    if [ "$SHA256" != "$TMD_SHA256" ]; then
+      echo "    sha256 mismatch: $SHA256 <> $TMD_SHA256"
+      ERR=$(( $ERR + 1 ))
+    fi
+
+    echo "    $ERR errors"
+
+  done
+}
 
 ###############################################################################
 # main
@@ -291,8 +342,8 @@ elif [ "$1" = "object:manifest" ]; then
   # [uuid]
   echo XXX1
 elif [ "$1" = "object:validate" ]; then
-  # [uuid]
-  echo XXX2
+  UUID="$2"
+  validate_object "$UUID"
 elif [ "$1" = "admin_set:create" ]; then
   UUID=$( mint_uuid )
   JSON="$2"
@@ -320,10 +371,8 @@ elif [ "$1" = "collection:update" ]; then
   cp -v "$JSON" "$COLLECTIONS_DIR/$UUID.json"
 elif [ "$1" = "collection:manifest" ]; then
   # [uuid]
-  # XXX
   echo XXX4
 elif [ "$1" = "sitemap" ]; then
-  # XXX
   echo XXX5
 else
   # ZZZ usage

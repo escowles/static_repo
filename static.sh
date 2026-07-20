@@ -33,6 +33,18 @@ SITEMAP_DIR="$PUB_DIR/sitemap"
 
 MD_FILES="_adm_md.json _desc_md.json _tech_md.json _order.json _struct.json"
 
+STUB_ADM=$( cat << END_ADM
+{
+  "admin_set":"",
+  "collections":[],
+  "rights":"https://rightsstatements.org/vocab/CNE/1.0/",
+  "remote_metadata_id":"",
+  "remote_metadata_type":"none",
+  "visibility":"private"
+}
+END_ADM
+)
+
 
 ###############################################################################
 # functions
@@ -76,7 +88,7 @@ function pair_path
   echo "$P1/$P2"
 }
 
-function remote_metaata_type
+function remote_metadata_type
 {
   ID="$1"
   ASPACE=$( echo "$ID" | grep "^[AC\|MC\|C]" | grep -c "_c" )
@@ -115,6 +127,46 @@ function timestamp_to_iso8601
   date -j -f "%s" +"%Y-%m-%dT%T%z" $1
 }
 
+function update_order
+{
+  UUID="$1"
+  OBJ_DIR=$( obj_dir $UUID )
+  ORD="$OBJ_DIR/_order.json"
+
+  echo '{"files":[' > $ORD
+  P=1
+  for i in $OBJ_DIR/[0-9a-zA-Z]*.*; do
+    if [ "$P" -gt "1" ]; then
+      echo "," >> $ORD
+    fi
+    FN=$( basename $i )
+    echo -n "{\"filename\":\"$FN\",\"label\":\"$P\"}" >> $ORD
+    P=$(( $P + 1 ))
+  done
+  echo "" >> $ORD
+  echo ']}' >> $ORD
+}
+
+function update_struct
+{
+  UUID="$1"
+  OBJ_DIR=$( obj_dir $UUID )
+  STR="$OBJ_DIR/_struct.json"
+
+  echo '{"label":"top","nodes":[' > $STR
+  P=1
+  for i in $OBJ_DIR/[0-9a-zA-Z]*.*; do
+    if [ "$P" -gt "1" ]; then
+      echo "," >> $STR
+    fi
+    FN=$( basename $i )
+    echo -n "{\"proxy:\":\"$FN\"}" >> $STR
+    P=$(( $P + 1 ))
+  done
+  echo "" >> $STR
+  echo ']}' >> $STR
+}
+
 function update_tech_md
 {
   UUID="$1"
@@ -122,7 +174,7 @@ function update_tech_md
   TMD="$OBJ_DIR/_tech_md.json"
 
   # ZZZ object metadata here or _adm_md.json?
-  echo '["files":[' > $TMD
+  echo '{"files":[' > $TMD
   for i in $OBJ_DIR/[0-9a-zA-Z]*.*; do
     if [ "$FIRST" = "1" ]; then
       echo "," >> $TMD
@@ -130,16 +182,17 @@ function update_tech_md
       FIRST=1
     fi
     FN=$( basename $i )
-    CR=$( stat -f %B $i )
-    CT=$( timestap_to_iso8601 $CRE_RAW )
-    MR=$( stat -f %m $i )
-    MT=$( timestap_to_iso8601 $MOD_RAW )
+    C1=$( stat -f %B $i )
+    CT=$( timestamp_to_iso8601 $C1 )
+    M1=$( stat -f %m $i )
+    MT=$( timestamp_to_iso8601 $M1 )
     SZ=$( stat -f %z $i )
     MD5=$( md5 -q $i )
     SHA=$( sha256 -q $i )
-    echo "{\"filename\":\"$FN\",\"created\":\"$CT\",\"modified\":\"$MT\",\"size\":\"$SZ\",\"md5\":\"$MD5\",\"sha256\":\"$SHA\"}" >> $TMD
+    echo -n "{\"filename\":\"$FN\",\"created\":\"$CT\",\"modified\":\"$MT\",\"size\":\"$SZ\",\"md5\":\"$MD5\",\"sha256\":\"$SHA\"}" >> $TMD
   done
-  echo ']' > $TMD
+  echo "" >> $TMD
+  echo ']}' >> $TMD
 }
 
 
@@ -149,28 +202,41 @@ function update_tech_md
 if [ "$1" = "object:create" ]; then
   SRC_DIR="$2"
   # ZZZ check [dir]
-  UUID=$( uuidgen )
+  UUID=$( mint_uuid )
   OBJ_DIR=$( obj_dir "$UUID" )
   mkdir -p "$OBJ_DIR"
+  echo "$UUID:"
   for i in $SRC_DIR/[0-9a-zA-Z]*.*; do
-    cp -av $i $OBJ_DIR/
+    FN=$( basename $i )
+    echo " > $FN"
+    cp -a $i $OBJ_DIR/
   done
   for f in $MD_FILES; do
     if [ -f "$SRC_DIR/$f" ]; then
+      echo " > $f"
       cp -v "$SRC_DIR/$f" "$OBJ_DIR/$f"
+    elif [ "$f" = "_adm_md.json" ]; then
+      echo " s $f"
+      echo "$STUB_ADM" > $OBJ_DIR/_adm_md.json
     elif [ "$f" = "_desc_md.json" ]; then
-      DIRNAME=$( dirname "$SRC_DIR" )
+      DIRNAME=$( basename "$SRC_DIR" )
       ID_TYPE=$( remote_metadata_type "$DIRNAME" )
       if [ "$ID_TYPE" = "alma" -o "$ID_TYPE" = "aspace" ]; then
+        echo " r $f"
         update_remote_metadata $UUID $ID_TYPE $DIRNAME
       else
+        echo " s $f"
         echo "{\"label\":\"$DIRNAME\"}" > $OBJ_DIR/_desc_md.json
       fi
+    elif [ "$f" = "_order.json" ]; then
+      echo " s $f"
+      update_order "$UUID"
+    elif [ "$f" = "_struct.json" ]; then
+      echo " s $f"
+      update_struct "$UUID"
     elif [ "$f" = "_tech_md.json" ]; then
-      update_tech_md $UUID
-    else
-      # ZZZ stub _admin _order _struct
-      echo "XXX"
+      echo " s $f"
+      update_tech_md "$UUID"
     fi
   done
   # ZZZ error if no files copied? or warn if only md files copied?
@@ -223,10 +289,10 @@ elif [ "$1" = "object:derivatives" ]; then
   object_derivatives "$UUID"
 elif [ "$1" = "object:manifest" ]; then
   # [uuid]
-  # XXX
+  echo XXX1
 elif [ "$1" = "object:validate" ]; then
   # [uuid]
-  # XXX
+  echo XXX2
 elif [ "$1" = "admin_set:create" ]; then
   UUID=$( mint_uuid )
   JSON="$2"
@@ -240,7 +306,7 @@ elif [ "$1" = "admin_set:update" ]; then
   cp -v "$JSON" "$ADMIN_SETS_DIR/$UUID.json"
 elif [ "$1" = "admin_set:manifest" ]; then
   # [uuid]
-  echo XXX
+  echo XXX3
 elif [ "$1" = "collection:create" ]; then
   UUID=$( mint_uuid )
   JSON="$2"
@@ -255,10 +321,10 @@ elif [ "$1" = "collection:update" ]; then
 elif [ "$1" = "collection:manifest" ]; then
   # [uuid]
   # XXX
-  echo XXX
+  echo XXX4
 elif [ "$1" = "sitemap" ]; then
   # XXX
-  echo XXX
+  echo XXX5
 else
   # ZZZ usage
   echo usage

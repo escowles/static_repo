@@ -19,6 +19,9 @@ ALMA_MD_SUFFIX=".jsonld"
 ASPACE_MD_PREFIX="https://findingaids.princeton.edu/catalog/"
 ASPACE_MD_SUFFIX=".json"
 
+# base url
+BASE_URL="http://localhost:4000"
+
 
 ###############################################################################
 # variables
@@ -59,6 +62,37 @@ function deriv_dir
 {
   PP=$( pair_path "$1" )
   echo "$DERIV_DIR/$PP/$1"
+}
+
+function generate_sitemap
+{
+  if [ ! -d "$SITEMAP_DIR" ]; then
+    mkdir -p "$SITEMAP_DIR"
+  fi
+
+  cat << END_INDEX > $SITEMAP_DIR/sitemap.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/siteindex.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>$BASE_URL/objects.xml</loc>
+  </sitemap>
+</sitemapindex>
+END_INDEX
+
+  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > $SITEMAP_DIR/objects.xml
+  echo "<urlset xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\" xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">" >> $SITEMAP_DIR/objects.xml
+
+  for f in `find "$IIIF_DIR" -name *.json`; do
+    FN=$( basename $f )
+    M1=$( stat -f %m "$f" )
+    MT=$( timestamp_to_iso8601 $M1 )
+    echo "  <url>" >> $SITEMAP_DIR/objects.xml
+    echo "    <loc>$BASE_URL/iiif/$FN</loc>" >> $SITEMAP_DIR/objects.xml
+    echo "    <lastmod>$MT</lastmod>" >> $SITEMAP_DIR/objects.xml
+    echo "  </url>" >> $SITEMAP_DIR/objects.xml
+  done
+
+  echo "</urlset>" >> $SITEMAP_DIR/objects.xml
 }
 
 function mint_uuid
@@ -173,8 +207,15 @@ function update_tech_md
   OBJ_DIR=$( obj_dir $UUID )
   TMD="$OBJ_DIR/_tech_md.json"
 
-  # ZZZ object metadata here or _adm_md.json?
-  echo '{"files":[' > $TMD
+  OC1=$( stat -f %B "$OBJ_DIR" )
+  OCT=$( timestamp_to_iso8601 $OC1 )
+  OM1=$( stat -f %m "$OBJ_DIR"/* | sort | tail -1 )
+  OMT=$( timestamp_to_iso8601 $OM1 )
+
+  echo "{" > $TMD
+  echo "  \"created\":\"$OCT\"," >> $TMD
+  echo "  \"modified\":\"$OMT\"," >> $TMD
+  echo "  \"files\":[" >> $TMD
   for i in $OBJ_DIR/[0-9a-zA-Z]*.*; do
     if [ "$FIRST" = "1" ]; then
       echo "," >> $TMD
@@ -189,7 +230,7 @@ function update_tech_md
     SZ=$( stat -f %z $i )
     MD5=$( md5 -q $i )
     SHA=$( sha256 -q $i )
-    echo -n "{\"filename\":\"$FN\",\"created\":\"$CT\",\"modified\":\"$MT\",\"size\":\"$SZ\",\"md5\":\"$MD5\",\"sha256\":\"$SHA\"}" >> $TMD
+    echo -n "    {\"filename\":\"$FN\",\"created\":\"$CT\",\"modified\":\"$MT\",\"size\":\"$SZ\",\"md5\":\"$MD5\",\"sha256\":\"$SHA\"}" >> $TMD
   done
   echo "" >> $TMD
   echo ']}' >> $TMD
@@ -373,7 +414,7 @@ elif [ "$1" = "collection:manifest" ]; then
   # [uuid]
   echo XXX4
 elif [ "$1" = "sitemap" ]; then
-  echo XXX5
+  generate_sitemap
 else
   cat << END_USAGE
 error: verb "$1" not found

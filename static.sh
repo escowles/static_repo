@@ -106,11 +106,14 @@ function object_derivatives
   UUID="$1"
   OBJ_PATH=$( obj_dir $UUID )
   DERIV=$( deriv_dir $UUID )
+  if [ ! -f "$DERIV" ]; then
+    mkdir -p "$DERIV"
+  fi
   for i in $OBJ_PATH/[0-9a-zA-Z]*.*; do
     EXT=$( echo "$i" | sed -e's/.*\.//' )
     FN=$( basename $i .$EXT )
     if [ "$EXT" = "tif" ]; then
-      convert -v $IMG_MGK_OPTS $i $DERIV/$FN.jpg
+      magick $IMG_MGK_OPTS $i $DERIV/$FN.jpg
     fi
   done 
 }

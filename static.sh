@@ -46,6 +46,38 @@ function obj_dir
   echo "$OBJECTS_DIR/$PP/$1"
 }
 
+function create_admin_set
+{
+  UUID="$1"
+  NAME="$2"
+  if [ ! -d "$ADMIN_SETS_DIR" ]; then
+    mkdir -p "$ADMIN_SETS_DIR"
+  fi
+  cat << END_ADM > "$ADMIN_SETS_DIR/$UUID.json"
+{
+  "id":"$UUID",
+  "name":"$NAME",
+  "type":"admin_set"
+}
+END_ADM
+}
+
+function create_collection
+{
+  UUID="$1"
+  NAME="$2"
+  if [ ! -d "$COLLECTIONS_DIR" ]; then
+    mkdir -p "$COLLECTIONS_DIR"
+  fi
+  cat << END_COL > "$COLLECTIONS_DIR/$UUID.json"
+{
+  "id":"$UUID",
+  "name":"$NAME",
+  "type":"collection"
+}
+END_COL
+}
+
 function deriv_dir
 {
   PP=$( pair_path "$1" )
@@ -64,23 +96,36 @@ function generate_sitemap
   <sitemap>
     <loc>$BASE_URL/objects.xml</loc>
   </sitemap>
+  <sitemap>
+    <loc>$BASE_URL/admin_sets.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>$BASE_URL/collections.xml</loc>
+  </sitemap>
 </sitemapindex>
 END_INDEX
 
-  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > $SITEMAP_DIR/objects.xml
-  echo "<urlset xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\" xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">" >> $SITEMAP_DIR/objects.xml
+  generate_sitemap_file admin_sets
+  generate_sitemap_file collections
+  generate_sitemap_file objects
+}
+function generate_sitemap_file
+{
+  TYPE="$1"
 
-  for f in `find "$IIIF_DIR" -name *.json`; do
+  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > $SITEMAP_DIR/$TYPE.xml
+  echo "<urlset xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\" xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">" >> $SITEMAP_DIR/$TYPE.xml
+
+  for f in `find "$IIIF_DIR/$TYPE" -name *.json`; do
     FN=$( basename $f )
     M1=$( stat -f %m "$f" )
     MT=$( timestamp_to_iso8601 $M1 )
-    echo "  <url>" >> $SITEMAP_DIR/objects.xml
-    echo "    <loc>$BASE_URL/iiif/$FN</loc>" >> $SITEMAP_DIR/objects.xml
-    echo "    <lastmod>$MT</lastmod>" >> $SITEMAP_DIR/objects.xml
-    echo "  </url>" >> $SITEMAP_DIR/objects.xml
+    echo "  <url>" >> $SITEMAP_DIR/$TYPE.xml
+    echo "    <loc>$BASE_URL/iiif/$TYPE/$FN</loc>" >> $SITEMAP_DIR/$TYPE.xml
+    echo "    <lastmod>$MT</lastmod>" >> $SITEMAP_DIR/$TYPE.xml
+    echo "  </url>" >> $SITEMAP_DIR/$TYPE.xml
   done
-
-  echo "</urlset>" >> $SITEMAP_DIR/objects.xml
+  echo "</urlset>" >> $SITEMAP_DIR/$TYPE.xml
 }
 
 function mint_uuid
@@ -398,9 +443,8 @@ elif [ "$1" = "object:validate" ]; then
   validate_object "$UUID"
 elif [ "$1" = "admin_set:create" ]; then
   UUID=$( mint_uuid )
-  JSON="$2"
-  # ZZZ error if no JSON file
-  cp -v "$JSON" "$ADMIN_SETS_DIR/$UUID.json"
+  NAME="$2"
+  create_admin_set "$UUID" "$NAME"
 elif [ "$1" = "admin_set:update" ]; then
   UUID="$2"
   JSON="$3"
@@ -412,9 +456,8 @@ elif [ "$1" = "admin_set:manifest" ]; then
   echo XXX3
 elif [ "$1" = "collection:create" ]; then
   UUID=$( mint_uuid )
-  JSON="$2"
-  # ZZZ error if no JSON file
-  cp -v "$JSON" "$COLLECTIONS_DIR/$UUID.json"
+  NAME="$2"
+  create_collection "$UUID" "$NAME"
 elif [ "$1" = "collection:update" ]; then
   UUID="$2"
   JSON="$3"

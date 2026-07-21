@@ -47,10 +47,10 @@ functionality, but using the filesystem as the primary interface.
 - object:derivatives [uuid]: (re)generate derivatives for the given object
 - object:manifest [uuid]: (re)generate the iiif manifest for the object
 - object:validate [uuid]: verify that the object is valid
-- admin_set:create [json]: ingest the json as a new admin_set
+- admin_set:create [name]: create a new admin set with the given name
 - admin_set:update [uuid] [json]: store the json as the given admin_set's metadata
 - admin_set:manifest [uuid]: (re)generate the iiif manifest for the collection
-- collection:create [json]: ingest the json as a new collection
+- collection:create [name]: create a new collection with the given name
 - collection:update [uuid] [json]: store the json as the given collection's metadata
 - collection:manifest [uuid]: (re)generate the iiif manifest for the collection
 - sitemap: (re) generate sitemaps

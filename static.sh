@@ -36,18 +36,6 @@ SITEMAP_DIR="$PUB_DIR/sitemap"
 
 MD_FILES="_adm_md.json _desc_md.json _tech_md.json _order.json _struct.json"
 
-STUB_ADM=$( cat << END_ADM
-{
-  "admin_set":"",
-  "collections":[],
-  "rights":"https://rightsstatements.org/vocab/CNE/1.0/",
-  "remote_metadata_id":"",
-  "remote_metadata_type":"none",
-  "visibility":"private"
-}
-END_ADM
-)
-
 
 ###############################################################################
 # functions
@@ -142,6 +130,25 @@ function remote_metadata_type
   fi
 }
 
+function stub_adm
+{
+  ID_TYPE="$1"
+  ID_VAL="$2"
+  if [ "$ID_TYPE" = "none" ]; then
+    ID_VAL=""
+  fi
+  cat << END_ADM
+{
+  "admin_set":"",
+  "collections":[],
+  "rights":"https://rightsstatements.org/vocab/CNE/1.0/",
+  "remote_metadata_id":"$ID_VAL",
+  "remote_metadata_type":"$ID_TYPE",
+  "visibility":"private"
+}
+END_ADM
+}
+
 function update_remote_metadata
 {
   UUID="$1"
@@ -150,9 +157,9 @@ function update_remote_metadata
   OBJ_DIR=$( obj_dir "$UUID" )
   DESC_MD_FILE="$OBJ_DIR/_desc_md.json"
   if [ "$TYPE" = "alma" ]; then
-    curl "${ALMA_MD_PREFIX}${ID}${ALMA_MD_SUFFIX}" > "$DESC_MD_FILE"
+    curl -s "${ALMA_MD_PREFIX}${ID}${ALMA_MD_SUFFIX}" > "$DESC_MD_FILE"
   elif [ "$TYPE" = "aspace" ]; then
-    curl "${ASPACE_MD_PREFIX}${ID}${ASPACE_MD_SUFFIX}"> "$DESC_MD_FILE"
+    curl -s "${ASPACE_MD_PREFIX}${ID}${ASPACE_MD_SUFFIX}" > "$DESC_MD_FILE"
   else
     echo "error"
     # ZZZ error
@@ -300,6 +307,9 @@ if [ "$1" = "object:create" ]; then
   UUID=$( mint_uuid )
   OBJ_DIR=$( obj_dir "$UUID" )
   mkdir -p "$OBJ_DIR"
+  DIRNAME=$( basename "$SRC_DIR" )
+  ID_TYPE=$( remote_metadata_type "$DIRNAME" )
+
   echo "$UUID:"
   for i in $SRC_DIR/[0-9a-zA-Z]*.*; do
     FN=$( basename $i )
@@ -312,10 +322,8 @@ if [ "$1" = "object:create" ]; then
       cp -v "$SRC_DIR/$f" "$OBJ_DIR/$f"
     elif [ "$f" = "_adm_md.json" ]; then
       echo " s $f"
-      echo "$STUB_ADM" > $OBJ_DIR/_adm_md.json
+      stub_adm "$ID_TYPE" "$DIRNAME" > $OBJ_DIR/_adm_md.json
     elif [ "$f" = "_desc_md.json" ]; then
-      DIRNAME=$( basename "$SRC_DIR" )
-      ID_TYPE=$( remote_metadata_type "$DIRNAME" )
       if [ "$ID_TYPE" = "alma" -o "$ID_TYPE" = "aspace" ]; then
         echo " r $f"
         update_remote_metadata $UUID $ID_TYPE $DIRNAME

@@ -88,14 +88,16 @@ functionality, but using the filesystem as the primary interface.
 		admin_sets.xml
 		collections.xml
 		objects.xml
-
-webapp:
-	- ingest: display a set of directories staged for ingest and allow selecting and ingesting them
-	- md_edit: edit a dublin-core metadata record, using controlled vocabs from vocab_editor, to
-		catalog ephemera or other items not cataloged in alma/aspace.
-	- vocab_edit: create vocabs and terms for use in md_editor
-	- struct_edit: port the figgy javascript and store the data as a file
-	- order_edit: port the figgy javascriptn and store the data as a file
-	- admin_set_edit: port the figgy scanned resource edit view and store the data as _adm_md.json
-	- col_edit: port the figgy collection edit view and store the data as a directory of files
 ```
+
+## webapp:
+here are the tasks that a separate webapp would need to provide to provide interactive functionality
+currently in figgy:
+- ingest: display a set of directories staged for ingest and allow selecting and ingesting them
+- md_edit: edit a dublin-core metadata record, using controlled vocabs from vocab_editor, to
+  catalog ephemera or other items not cataloged in alma/aspace.
+- vocab_edit: create vocabs and terms for use in md_editor
+- struct_edit: port the figgy javascript and store the data as a file
+- order_edit: port the figgy javascriptn and store the data as a file
+- admin_set_edit: port the figgy scanned resource edit view and store the data as _adm_md.json
+- col_edit: port the figgy collection edit view and store the data as a directory of files

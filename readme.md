@@ -58,6 +58,7 @@ functionality, but using the filesystem as the primary interface.
 
 ## filesystem layout
 
+```
 /repo
 	admin_sets:
 		[uuid].json
@@ -97,3 +98,4 @@ webapp:
 	- order_edit: port the figgy javascriptn and store the data as a file
 	- admin_set_edit: port the figgy scanned resource edit view and store the data as _adm_md.json
 	- col_edit: port the figgy collection edit view and store the data as a directory of files
+```
